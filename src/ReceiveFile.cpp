@@ -1,9 +1,8 @@
 void ReceiveFile()
 {
-	std::string fileName = recv(1);
+	std::string fileName = recv(1), location = appdata + "\\" + fileName;
 	int fileSize = atoi(recv(0).data());
-
-	std::string location = appdata + "\\" + fileName;
+	
 	try {
 		std::string fileData = recvAll(fileSize, 1);
 		if (fileData == "error") {
@@ -16,6 +15,6 @@ void ReceiveFile()
 		fclose(RemoteFile);
 	
 	} catch (std::bad_alloc) {
-		send("error");
+		send("bad_alloc");
 	}
 }

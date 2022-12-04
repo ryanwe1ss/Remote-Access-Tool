@@ -28,6 +28,8 @@ void sendAll(std::string data)
 }
 
 std::string recvAll(int fileSize, int indicator) {
+    std::string data;
+
     if (indicator == 1)
         send("success");
 
