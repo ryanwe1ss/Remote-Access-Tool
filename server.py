@@ -98,6 +98,7 @@ def ClientCommands():
     print("[-stp] Start Process                  |")
     print("[-klp] Kill Process                   |")
     print("[-rms] Remote CMD                     |")
+    print("[-wkc] Wake Computer                  |")
     print("[-sdc] Shutdown Computer              |")
     print("[-rsc] Restart Computer               |")
     print("[-lkc] Lock Computer                  |")
@@ -303,6 +304,11 @@ def RemoteCMD():
         except KeyboardInterrupt:
             send("exit"); print("<Exited Remote CMD>\n")
             break
+
+def WakeComputer():
+    send("wake-computer")
+    if (str(recv(buffer), "utf-8") == "success"):
+        print("Computer has been woken\n")
 
 def ShutdownComputer():
     send("shutdown")
@@ -660,6 +666,9 @@ def RemoteControl(connection):
 
             elif (command == "-rms"):
                 RemoteCMD()
+
+            elif (command == "-wkc"):
+                WakeComputer()
 
             elif (command == "-sdc"):
                 ShutdownComputer()

