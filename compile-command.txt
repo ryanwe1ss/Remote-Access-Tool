@@ -1,0 +1,1 @@
+g++ server.cpp -mwindows -o server -lws2_32 -lstrmiids -lole32 -loleaut32 -static-libgcc -static-libstdc++ -static
