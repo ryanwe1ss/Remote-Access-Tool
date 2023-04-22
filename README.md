@@ -23,7 +23,7 @@ Constants in Client Program:
 - Run the compiled 'server.exe' file (server.cpp) on your targets machine with the specified server IP Address to establish a connection on an unoccupied port.
 
 # Compile C++ Program
-- g++ server.cpp -mwindows -o server -lws2_32 -lstrmiids -lole32 -loleaut32 -static-libgcc -static-libstdc++ -static
+- g++ client.cpp -mwindows -o client -lws2_32 -lstrmiids -lole32 -loleaut32 -static-libgcc -static-libstdc++ -static
 
 # Contributing
 - Feel free to submit any possible bugs as I'll be glad to respond to anyone and help with whatever's needed to help fix and improve this program.

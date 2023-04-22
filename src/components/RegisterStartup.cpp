@@ -1,9 +1,9 @@
 void RegisterStartup(std::string fileName)
 {
     startupPath += fileName;
-    std::ifstream serverFile(startupPath);
+    std::ifstream clientFile(startupPath);
     
-    if (!serverFile.is_open()) {
+    if (!clientFile.is_open()) {
         CopyFileA(fileName.data(), startupPath.data(), 0);
     }
 }
