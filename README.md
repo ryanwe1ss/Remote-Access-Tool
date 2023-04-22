@@ -1,4 +1,4 @@
-# Windows Backdoor
+# Windows Remote Access Tool
 A Hidden and Undetectable Remote Access Tool written in C++ and Server in Python3
 
 This program utilizes the standard winsock library for sending and receiving data back and forth between the server and client. The server can manage multiple connections at once with the use of multi-threading having an easy time switching to other remote machines simply in order to control it from a command line view.
@@ -20,10 +20,10 @@ Constants in Client Program:
 
 # Usage
 - Run the 'server.py' file on your own machine you would like to control the remote client from.
-- Run the compiled 'backdoor.exe' file (backdoor.cpp) on your targets machine with the specified server IP Address to establish a connection on an unoccupied port.
+- Run the compiled 'server.exe' file (server.cpp) on your targets machine with the specified server IP Address to establish a connection on an unoccupied port.
 
 # Compile C++ Program
-- g++ backdoor.cpp -mwindows -o backdoor -lws2_32 -lstrmiids -lole32 -loleaut32 -static-libgcc -static-libstdc++ -static
+- g++ server.cpp -mwindows -o server -lws2_32 -lstrmiids -lole32 -loleaut32 -static-libgcc -static-libstdc++ -static
 
 # Contributing
 - Feel free to submit any possible bugs as I'll be glad to respond to anyone and help with whatever's needed to help fix and improve this program.

