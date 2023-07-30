@@ -5,7 +5,7 @@
 #include <dirent.h>
 #include <dshow.h>
 
-const std::string SERVER = "192.168.2.222";
+const std::string SERVER = "localhost";
 const int PORT = 5005;
 
 std::vector<std::string> logs;

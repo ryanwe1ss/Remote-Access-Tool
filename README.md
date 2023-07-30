@@ -19,11 +19,16 @@ Constants in Client Program:
 ![](images/console.png)
 
 # Usage
-- Run the 'server.py' file on your own machine you would like to control the remote client from.
-- Run the compiled 'client.exe' file (client.cpp) on your targets machine with the specified server IP Address to establish a connection on an unoccupied port.
+- Run the 'server.py' file on your own machine you would like to control the remote client from
+- Compile the 'client.cpp' file after specifying it's server host and port
+- Execute the compiled 'client.exe' file on your targets machine
 
 # Compile C++ Program
 - g++ client.cpp -mwindows -o client -lws2_32 -lstrmiids -lole32 -loleaut32 -static-libgcc -static-libstdc++ -static
 
 # Contributing
-- Feel free to submit any possible bugs as I'll be glad to respond to anyone and help with whatever's needed to help fix and improve this program.
+- Feel free to submit any possible bugs as I will be glad to respond to anyone and help with whatever's needed to further improve this program
+
+# Quick Note
+- This project is in development phase 02 to implement a visual control panel through a web-browser utilizing 
+a Flask API built in Python. Otherwise, the server-client software is in working production.
