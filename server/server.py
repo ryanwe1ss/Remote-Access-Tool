@@ -1,5 +1,4 @@
 # Standard Libraries
-from prettytable import PrettyTable
 import threading
 import socket
 import time
@@ -7,9 +6,14 @@ import os
 import re
 
 # Third-Party Libraries
+from prettytable import PrettyTable
+from dotenv import load_dotenv
+load_dotenv()
+
+# Web Server API
 import webapi
 
-port = 5005
+port = int(os.environ.get('PORT'))
 buffer = 16384
 
 clients = []
@@ -409,7 +413,7 @@ def ViewFiles(connection, directory=None):
     else:
         response = "File Count: [{:,}]\nCharacter Count: [{:,}]\n\n{}".format(fileCount, len(files), files)
         print(response, end="")
-        return response
+        return files
         
 
 def SendFile(connection):
