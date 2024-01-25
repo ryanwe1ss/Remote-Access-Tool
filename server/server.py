@@ -10,10 +10,7 @@ from prettytable import PrettyTable
 from dotenv import load_dotenv
 load_dotenv()
 
-# Web Server API
-import webapi
-
-port = int(os.environ.get('PORT'))
+port = int(os.environ.get('SERVER_PORT'))
 buffer = 16384
 
 clients = []
@@ -681,13 +678,10 @@ def SelectConnection():
             break
 
         finally:
-            webapi.api.connection = None
             if (len(clients) == 0):
                 clientInfo.clear()
 
 def RemoteControl(connection):
-    webapi.api.connection = connection
-
     print(f"Connected: {clientInfo[connection]['computer']}/{clientInfo[connection]['ip']} ({clients.index(clients[connection])})\n")
     while (True):
         try:
@@ -782,40 +776,8 @@ def RemoteControl(connection):
             clients[connection].close()
             break
 
-webapi.api.clients = clients
-webapi.api.clientInfo = clientInfo
-
-webapi.api.VBSMessageBox = VBSMessageBox
-webapi.api.ChangeWallpaper = ChangeWallpaper
-webapi.api.CaptureScreenshot = CaptureScreenshot
-webapi.api.GetConnectedWebcams = GetConnectedWebcams
-webapi.api.CaptureWebcam = CaptureWebcam
-webapi.api.SystemInformation = SystemInformation
-webapi.api.ViewTasks = ViewTasks
-webapi.api.IdleTime = IdleTime
-webapi.api.StartProcess = StartProcess
-webapi.api.KillProcess = KillProcess
-webapi.api.WakeComputer = WakeComputer
-webapi.api.ShutdownComputer = ShutdownComputer
-webapi.api.RestartComputer = RestartComputer
-webapi.api.LockComputer = LockComputer
-webapi.api.CurrentDirectory = CurrentDirectory
-webapi.api.ViewFiles = ViewFiles
-# webapi.api.SendFile = SendFile
-# webapi.api.ReceiveFile = ReceiveFile
-webapi.api.ReadFile = ReadFile
-webapi.api.MoveFile = MoveFile
-webapi.api.DeleteFile = DeleteFile
-webapi.api.DeleteDirectory = DeleteDirectory
-
-webapi.api.clients_lock = threading.Lock()
-
 t1 = threading.Thread(target=RemoteConnect)
 t1.daemon = True
 t1.start()
-
-t2 = threading.Thread(target=webapi.api.run)
-t2.daemon = True
-t2.start()
 
 SelectConnection()

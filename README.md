@@ -28,7 +28,3 @@ Constants in Client Program:
 
 # Contributing
 - Feel free to submit any possible bugs as I will be glad to respond to anyone and help with whatever's needed to further improve this program
-
-# Quick Note
-- This project is in development phase 02 to implement a visual control panel through a web-browser utilizing 
-a Flask API built in Python. Otherwise, the server-client software is in working production.
